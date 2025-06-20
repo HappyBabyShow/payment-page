@@ -3,12 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <title>Покупка билета — Пенная вечеринка</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .ticket-form { max-width: 400px; padding: 20px; border: 1px solid #ccc; border-radius: 5px; }
+    .ticket-info { margin-top: 10px; color: #555; }
+  </style>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
 </head>
 <body>
   <h1>Добро пожаловать!</h1>
+  <div class="ticket-form">
+    <h2>Купить билет</h2>
+    <label for="ticket-type">Тип билета:</label>
+    <select id="ticket-type">
+      <option value="standard">Стандартный (100 доступно)</option>
+      <option value="vip">VIP (50 доступно)</option>
+    </select>
+    <br><br>
+    <button onclick="buyTicket()">Купить</button>
+    <div id="ticket-info" class="ticket-info"></div>
+  </div>
   <script>
     // Твой реальный firebaseConfig
     const firebaseConfig = {
@@ -24,7 +40,7 @@
     // Инициализация Firebase
     const app = initializeApp(firebaseConfig);
 
-    // Активация App Check с реальным Site Key
+    // Активация App Check
     const appCheck = firebase.appCheck();
     appCheck.activate('6LewxGcrAAAAAEzqFq67oZepY8fi9AcqTVYo-GcM', true);
 
@@ -43,18 +59,52 @@
       ticketLimitsRef.once('value', (snapshot) => {
         if (!snapshot.exists()) {
           ticketLimitsRef.set(ticketLimitsData).then(() => {
-            console.log('ticketLimits успешно инициализированы в Realtime Database!');
+            console.log('ticketLimits успешно инициализированы!');
           }).catch((error) => {
-            console.error('Ошибка инициализации ticketLimits:', error);
+            console.error('Ошибка инициализации:', error);
           });
-        } else {
-          console.log('ticketLimits уже существуют, ничего не изменено.');
         }
       });
     }
 
-    // Вызов функции при загрузке страницы
+    // Функция для покупки билета
+    function buyTicket() {
+      const ticketType = document.getElementById('ticket-type').value;
+      const ticketLimitsRef = db.ref('ticketLimits');
+      
+      ticketLimitsRef.once('value', (snapshot) => {
+        const limits = snapshot.val() || ticketLimitsData;
+        let newLimit = limits[ticketType];
+
+        if (newLimit > 0) {
+          newLimit -= 1;
+          ticketLimitsRef.update({ [ticketType]: newLimit, total: limits.total - 1 }).then(() => {
+            updateTicketInfo();
+            alert(`Билет ${ticketType} успешно куплен! Осталось: ${newLimit}`);
+          }).catch((error) => {
+            console.error('Ошибка покупки:', error);
+          });
+        } else {
+          alert(`Билеты типа ${ticketType} закончились!`);
+        }
+      });
+    }
+
+    // Обновление информации о билетах
+    function updateTicketInfo() {
+      const ticketLimitsRef = db.ref('ticketLimits');
+      ticketLimitsRef.on('value', (snapshot) => {
+        const limits = snapshot.val();
+        if (limits) {
+          document.getElementById('ticket-info').innerText = 
+            `Стандартные: ${limits.standard}, VIP: ${limits.vip}, Всего: ${limits.total}`;
+        }
+      });
+    }
+
+    // Инициализация при загрузке
     initializeTicketLimits();
+    updateTicketInfo();
   </script>
 </body>
 </html>
