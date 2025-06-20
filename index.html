@@ -7,6 +7,8 @@
     body { font-family: Arial, sans-serif; margin: 20px; }
     .ticket-form { max-width: 400px; padding: 20px; border: 1px solid #ccc; border-radius: 5px; }
     .ticket-info { margin-top: 10px; color: #555; }
+    .payment-buttons { margin-top: 10px; }
+    button { margin-right: 10px; padding: 5px 10px; }
   </style>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -61,8 +63,12 @@
       <a id="mapLink" href="#" target="_blank">Открыть в Google Картах</a>
     </div>
 
-    <!-- Кнопка оплаты -->
-    <button id="payButton" style="display:none; background: gray;" onclick="buyTickets()">Оплатить</button>
+    <!-- Кнопки оплаты -->
+    <div id="paymentButtons" class="payment-buttons" style="display:none;">
+      <button id="payCard" style="background: gray;" onclick="buyTickets('card')">Оплатить картой</button>
+      <button id="payPaypal" style="background: gray;" onclick="buyTickets('paypal')">Оплатить PayPal</button>
+      <button id="payCash" style="background: gray;" onclick="buyTickets('cash')">Оплатить наличными</button>
+    </div>
   </div>
 
   <script>
@@ -143,7 +149,7 @@
       const quantitySection = document.getElementById("quantitySection");
       const extrasSection = document.getElementById("extrasSection");
       const addressSection = document.getElementById("addressSection");
-      const payButton = document.getElementById("payButton");
+      const paymentButtons = document.getElementById("paymentButtons");
 
       if (ticketType) {
         quantitySection.style.display = "block";
@@ -154,7 +160,7 @@
         quantitySection.style.display = "none";
         extrasSection.style.display = "none";
         addressSection.style.display = "none";
-        payButton.style.display = "none";
+        paymentButtons.style.display = "none";
       }
     }
 
@@ -162,7 +168,7 @@
       const ticketType = document.querySelector('input[name="ticketType"]:checked')?.value;
       const ticketQuantity = parseInt(document.getElementById("ticketQuantity").value);
       const ticketAvailability = document.getElementById("ticketAvailability");
-      const payButton = document.getElementById("payButton");
+      const paymentButtons = document.getElementById("paymentButtons");
 
       if (ticketType) {
         const ticketLimitsRef = db.ref('ticketLimits');
@@ -171,18 +177,27 @@
           const available = limits[ticketType];
           if (ticketQuantity <= available) {
             ticketAvailability.innerText = `Доступно: ${available} билетов.`;
-            payButton.style.background = "green";
-            payButton.disabled = false;
+            paymentButtons.style.display = "block";
+            document.getElementById("payCard").style.background = "green";
+            document.getElementById("payPaypal").style.background = "green";
+            document.getElementById("payCash").style.background = "green";
+            document.getElementById("payCard").disabled = false;
+            document.getElementById("payPaypal").disabled = false;
+            document.getElementById("payCash").disabled = false;
           } else {
             ticketAvailability.innerText = `Недостаточно билетов. Доступно: ${available}.`;
-            payButton.style.background = "gray";
-            payButton.disabled = true;
+            paymentButtons.style.display = "block";
+            document.getElementById("payCard").style.background = "gray";
+            document.getElementById("payPaypal").style.background = "gray";
+            document.getElementById("payCash").style.background = "gray";
+            document.getElementById("payCard").disabled = true;
+            document.getElementById("payPaypal").disabled = true;
+            document.getElementById("payCash").disabled = true;
           }
         }).catch((error) => {
           console.error('Ошибка проверки доступности:', error);
           ticketAvailability.innerText = 'Ошибка загрузки данных.';
-          payButton.style.background = "gray";
-          payButton.disabled = true;
+          paymentButtons.style.display = "none";
         });
       }
     }
@@ -201,31 +216,38 @@
       };
 
       const addressSection = document.getElementById("addressSection");
-      const payButton = document.getElementById("payButton");
+      const paymentButtons = document.getElementById("paymentButtons");
       if (city) {
         document.getElementById("addressText").innerText = addressText[city];
         document.getElementById("mapLink").href = mapLinks[city];
         addressSection.style.display = "block";
-        payButton.style.display = "inline-block";
+        paymentButtons.style.display = "block"; // Показываем кнопки при выборе адреса
       } else {
         addressSection.style.display = "none";
-        payButton.style.display = "none";
+        paymentButtons.style.display = "none";
       }
     }
 
-    function buyTickets() {
+    function buyTickets(paymentMethod) {
       const ticketType = document.querySelector('input[name="ticketType"]:checked')?.value;
       const ticketQuantity = parseInt(document.getElementById("ticketQuantity").value);
       const ticketLimitsRef = db.ref('ticketLimits');
-      const payButton = document.getElementById("payButton");
+      const payCard = document.getElementById("payCard");
+      const payPaypal = document.getElementById("payPaypal");
+      const payCash = document.getElementById("payCash");
 
       if (!ticketType || !ticketQuantity) {
         alert("Выберите тип и количество билетов!");
         return;
       }
 
-      payButton.disabled = true;
-      payButton.style.background = "gray";
+      // Отключаем все кнопки во время операции
+      payCard.disabled = true;
+      payPaypal.disabled = true;
+      payCash.disabled = true;
+      payCard.style.background = "gray";
+      payPaypal.style.background = "gray";
+      payCash.style.background = "gray";
 
       ticketLimitsRef.once('value', (snapshot) => {
         const limits = snapshot.val() || initialTicketLimits;
@@ -235,25 +257,44 @@
           const newLimit = available - ticketQuantity;
           const newTotal = limits.total - ticketQuantity;
           ticketLimitsRef.update({ [ticketType]: newLimit, total: newTotal }).then(() => {
-            console.log(`Успешно куплено ${ticketQuantity} билет(ов) типа ${ticketType}`);
-            alert(`Успешно куплено ${ticketQuantity} билет(ов) типа ${ticketType}! Остаток: ${newLimit}`);
+            console.log(`Успешно куплено ${ticketQuantity} билет(ов) типа ${ticketType} через ${paymentMethod}`);
+            alert(`Успешно куплено ${ticketQuantity} билет(ов) типа ${ticketType} через ${paymentMethod}! Остаток: ${newLimit}`);
             updateAvailability();
           }).catch((error) => {
             console.error('Ошибка покупки:', error);
             alert("Ошибка при покупке. Попробуйте снова.");
-            payButton.disabled = false;
-            payButton.style.background = "green";
+            // Восстанавливаем кнопки
+            payCard.disabled = false;
+            payPaypal.disabled = false;
+            payCash.disabled = false;
+            if (ticketQuantity <= available) {
+              payCard.style.background = "green";
+              payPaypal.style.background = "green";
+              payCash.style.background = "green";
+            }
           });
         } else {
           alert(`Недостаточно билетов. Доступно: ${available}.`);
-          payButton.disabled = false;
-          payButton.style.background = "green";
+          // Восстанавливаем кнопки
+          payCard.disabled = false;
+          payPaypal.disabled = false;
+          payCash.disabled = false;
+          if (ticketQuantity <= available) {
+            payCard.style.background = "green";
+            payPaypal.style.background = "green";
+            payCash.style.background = "green";
+          }
         }
       }).catch((error) => {
         console.error('Ошибка доступа к базе:', error);
         alert("Ошибка подключения к базе данных.");
-        payButton.disabled = false;
-        payButton.style.background = "green";
+        // Восстанавливаем кнопки
+        payCard.disabled = false;
+        payPaypal.disabled = false;
+        payCash.disabled = false;
+        payCard.style.background = "green";
+        payPaypal.style.background = "green";
+        payCash.style.background = "green";
       });
     }
 
