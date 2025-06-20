@@ -33,9 +33,9 @@
     <!-- Шаг 3: Тип билета и количество -->
     <p><strong>Выберите тип билета:</strong></p>
     <input type="radio" name="ticketType" value="standard" onclick="updateTicketInfo()"> Стандарт — 30€<br>
-    <small>Включает: билет на одного ребенка попкорн, сладкая вата, игры и участие в пене</small><br><br>
+    <small>Включает: попкорн, сладкая вата, игры и участие в пене</small><br><br>
     <input type="radio" name="ticketType" value="family" onclick="updateTicketInfo()"> Семейный — 70€<br>
-    <small>Включает: всё из стандарта + один взрослый или ребенок, доступ к шведскиму столу и батуту</small><br>
+    <small>Включает: всё из стандарта + отдельное место со шведским столом и батутом</small><br>
     <div id="quantitySection" style="display:none;">
       <label for="ticketQuantity">Количество:</label>
       <select id="ticketQuantity" onchange="updateTicketInfo()">
@@ -162,6 +162,7 @@
       const ticketType = document.querySelector('input[name="ticketType"]:checked')?.value;
       const ticketQuantity = parseInt(document.getElementById("ticketQuantity").value);
       const ticketAvailability = document.getElementById("ticketAvailability");
+      const payButton = document.getElementById("payButton");
 
       if (ticketType) {
         const ticketLimitsRef = db.ref('ticketLimits');
@@ -170,11 +171,18 @@
           const available = limits[ticketType];
           if (ticketQuantity <= available) {
             ticketAvailability.innerText = `Доступно: ${available} билетов.`;
-            document.getElementById("payButton").style.background = "green";
+            payButton.style.background = "green";
+            payButton.disabled = false;
           } else {
             ticketAvailability.innerText = `Недостаточно билетов. Доступно: ${available}.`;
-            document.getElementById("payButton").style.background = "gray";
+            payButton.style.background = "gray";
+            payButton.disabled = true;
           }
+        }).catch((error) => {
+          console.error('Ошибка проверки доступности:', error);
+          ticketAvailability.innerText = 'Ошибка загрузки данных.';
+          payButton.style.background = "gray";
+          payButton.disabled = true;
         });
       }
     }
@@ -209,11 +217,15 @@
       const ticketType = document.querySelector('input[name="ticketType"]:checked')?.value;
       const ticketQuantity = parseInt(document.getElementById("ticketQuantity").value);
       const ticketLimitsRef = db.ref('ticketLimits');
+      const payButton = document.getElementById("payButton");
 
       if (!ticketType || !ticketQuantity) {
         alert("Выберите тип и количество билетов!");
         return;
       }
+
+      payButton.disabled = true;
+      payButton.style.background = "gray";
 
       ticketLimitsRef.once('value', (snapshot) => {
         const limits = snapshot.val() || initialTicketLimits;
@@ -223,15 +235,25 @@
           const newLimit = available - ticketQuantity;
           const newTotal = limits.total - ticketQuantity;
           ticketLimitsRef.update({ [ticketType]: newLimit, total: newTotal }).then(() => {
+            console.log(`Успешно куплено ${ticketQuantity} билет(ов) типа ${ticketType}`);
             alert(`Успешно куплено ${ticketQuantity} билет(ов) типа ${ticketType}! Остаток: ${newLimit}`);
             updateAvailability();
           }).catch((error) => {
             console.error('Ошибка покупки:', error);
             alert("Ошибка при покупке. Попробуйте снова.");
+            payButton.disabled = false;
+            payButton.style.background = "green";
           });
         } else {
           alert(`Недостаточно билетов. Доступно: ${available}.`);
+          payButton.disabled = false;
+          payButton.style.background = "green";
         }
+      }).catch((error) => {
+        console.error('Ошибка доступа к базе:', error);
+        alert("Ошибка подключения к базе данных.");
+        payButton.disabled = false;
+        payButton.style.background = "green";
       });
     }
 
