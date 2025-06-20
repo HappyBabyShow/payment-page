@@ -90,7 +90,7 @@
     const appCheck = firebase.appCheck();
     appCheck.activate('6LewxGcrAAAAAEzqFq67oZepY8fi9AcqTVYo-GcM', true);
 
-    // Инициализация Realtime Database
+    // Инициализация Realtime Database (перемещено выше)
     const db = firebase.database();
 
     // Инициализация ticketLimits
@@ -221,7 +221,7 @@
         document.getElementById("addressText").innerText = addressText[city];
         document.getElementById("mapLink").href = mapLinks[city];
         addressSection.style.display = "block";
-        paymentButtons.style.display = "block"; // Показываем кнопки при выборе адреса
+        paymentButtons.style.display = "block";
       } else {
         addressSection.style.display = "none";
         paymentButtons.style.display = "none";
