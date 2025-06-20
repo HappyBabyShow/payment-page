@@ -1,0 +1,324 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Покупка билета — Пенная вечеринка</title>
+  <!-- Stripe Buy Button JS -->
+  <script async src="https://js.stripe.com/v3/buy-button.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-check-compat.js"></script>
+  <!-- Telegram Login Widget -->
+  <script async src="https://telegram.org/js/telegram-widget.js" data-telegram-login="RomanPortoBot" data-size="large" data-onauth="onTelegramAuth(user)"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+    h1 { color: #333; }
+    label, p { font-size: 16px; }
+    select, input[type="text"], input[type="radio"] { margin: 10px 0; padding: 871;font-size; font-size: 16px; }
+    button, a { margin: 10px 5px; padding: 10px; }
+    #paymentSection { margin-top: 20px; }
+    #availabilityMessage { font-weight: bold; }
+    small { color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Покупка билета на пенную вечеринку</h2>
+  <!-- Telegram Login -->
+  <p>Войдите в Telegram для получения QR-кода в чат (необязательно):</p>
+  <div id="telegramLogin"></div>
+
+  <!-- Шаг 1: Город -->
+  <label for="city">Выберите город:</label>
+  <select id="city" onchange="updateDates()">
+    <option value="">-- Выберите --</option>
+    <option value="Порту">Порту</option>
+    <option value="Лиссабон">Лиссабон</option>
+    <option value="Алгарве">Алгарве</option>
+  </select>
+
+  <!-- Шаг 2: Дата и время -->
+  <div idid="dateSection" style="display: none;">
+    <div id="dateSection">
+      <p><strong>Дата:</strong></p>
+      <select id="eventDate" onchange="checkAvailability()"></select>
+      <p><strong>Время:</strong> 15:00</p>
+
+    <!-- Шаг 3: Тип билета -->
+    <p><strong>Выберите тип:</strong></p>
+    <input type="radio" name="ticketType" value="standard" onclick="checkAvailability()"> Стандарт — 30€<br>
+    <small>Включает: попкорн, сладости, игры и участие в пене</small><br><br>
+    <input type="radio" name="ticketType" value="standardPlus" onclick="checkAvailability()"> Стандарт+ — 45€<br>
+    <small>Включает: всё из стандарта + шведский стол и батут</small><br><br>
+    <input type="radio" name="ticketType" value="family" onclick="checkAvailability()"> Семейный — 70€<br>
+    <small>Включает: всё из стандарта + отдельное место со шведкой и батутом</small>
+
+    <!-- Шаг 4: Имя -->
+    <div id="nameSection" style="display: none;">
+      <div id="nameSection">
+        <label for="name">Ваше имя: </label>
+        <input type="text" id="name" required>
+      </div>
+
+      <!-- Шаг 5: Адрес и карта -->
+      <div id="addressSection" style="display: none;">
+        <div id="addressSection">
+          <p><strong>Адрес мероприятия:</strong></p>
+          <div id="addressText"></div>
+          <a href="#" id="mapLink" href="#" target="_blank">Открыть в Google Картах</a>
+        </div>
+
+        <!-- Кнопки оплаты -->
+        <div id="paymentSection" style="display: none;">
+          <div id="paymentSection">
+            <div id="stripeButtonContainer" style="display: none;">
+              <stripe-buy-button
+                id="stripeStandard"
+                buy-button-id="buy_btn_1RbU8NLWvpIFJx0GGgRmvdc1"
+                publishable-key="pk_live_51RahBHLWvpIFJx0GgW5tZ173sGzJgcZXUJVmecoqEKxrzxGLp9EpqhK64wXFUGYXjU2sxCuddytGRsWOf0sgagr700HovZduI6"
+                style="display: none;"
+              >
+              </stripe-buy-button>
+              <stripe-buy-button
+                id="stripeStandardPlus"
+                buy-button-id="buy_btn_1RbaacLWvpIFJx0GW7dM1vJQ"
+                publishable-key="pk_live_51RahBHLWvpIFJx0GgW5tZ173sGzJgcZXUJVmecoqEKxrzxGLp9EpqhK64wXFUGYXjU2sxCuddytGRsWOf0sgagr700HovZduI6"
+                style="display: none;"
+              >
+              </stripe-buy-button>
+              <stripe-buy-button
+                id="stripeFamily"
+                buy-button-id="buy_btn_1RbcbtLWvpIFJx0GPWou4ymy"
+                publishable-key="pk_live_51RahBHLWvpIFJx0GgW5tZ173sGzJgcZXUJVmecoqEKxrzxGLp9EpqhK64wXFUGYXjU2sxCuddytGRsWOf0sgagr700HovZduI6"
+                style="display: none;"
+              >
+              </stripe-buy-button>
+            </div>
+            <a id="payCryptoLink" href="#" target="_blank" rel="noreferrer noopener" style="display: none;">
+              <img src="https://nowpayments.io/images/embeds/payment-button-white.svg" alt="Cryptocurrency & Bitcoin payment button by NOWPayments">
+            </a>
+            <button id="payLocalBtn" disabled style="background: gray;">Оплатить MB Way</button>
+          </div>
+
+          <!-- Сообщение о доступности -->
+          <p id="availabilityMessage" style="color: red; display: none;">Билеты закончились!</p>
+        </div>
+
+        <script>
+          // Инициализация Firebase
+          const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_BUCKET",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+          };
+          firebase.initializeApp(firebaseConfig);
+          const appCheck = firebase.appCheck();
+          appCheck.activate('YOUR_RECAPTCHA_SITE_KEY', true); // App Check
+          const db = firebase.database();
+
+          // Telegram Login
+          let userChatId = null;
+          function onTelegramAuth(user) {
+            userChatId = user.id;
+            localStorage.setItem('telegramChatId', userChatId);
+            alert('Вы вошли в Telegram! QR-код будет отправлен в ваш чат.');
+          }
+          if (localStorage.getItem('telegramChatId')) {
+            userChatId = localStorage.getItem('telegramChatId');
+          }
+
+          // Перехват Stripe Buy Button для добавления метаданных
+          document.querySelectorAll('stripe-buy-button').forEach(button => {
+            button.addEventListener('click', () => {
+              const city = document.getElementById('city').value;
+              const date = document.getElementById('eventDate').value;
+              const ticketType = document.querySelector('input[name="ticketType"]:checked')?.value;
+              const name = document.getElementById('name').value;
+              if (userChatId && city && date && ticketType && name) {
+                button.setAttribute('client-reference-id', JSON.stringify({
+                  chatId: userChatId,
+                  city: city,
+                  date: date,
+                  ticketType: ticketType,
+                  name: name
+                }));
+              }
+            });
+          });
+
+          // Лимиты билетов
+          let ticketLimits = {};
+          db.ref('ticketLimits').once('value', (snapshot) => {
+            ticketLimits = snapshot.val() || {
+              "Порту": {
+                "2025-08-23": { standard: { total: 30, sold: 0 }, standardPlus: { total: 25, sold: 0 }, family: { total: 25, sold: 0 } },
+                "2025-08-24": { standard: { total: 30, sold: 0 }, standardPlus: { total: 25, sold: 0 }, family: { total: 25, sold: 0 } }
+              },
+              "Лиссабон": {
+                "2025-08-30": { standard: { total: 30, sold: 0 }, standardPlus: { total: 25, sold: 0 }, family: { total: 25, sold: 0 } }
+              },
+              "Алгарве": {
+                "2025-08-28": { standard: { total: 30, sold: 0 }, standardPlus: { total: 25, sold: 0 }, family: { total: 25, sold: 0 } }
+              }
+            };
+          });
+
+          function updateDates() {
+            const city = document.getElementById("city").value;
+            const dateSelect = document.getElementById("eventDate");
+            const dateSection = document.getElementById("dateSection");
+
+            dateSection.style.display = city ? "block" : "none";
+            document.getElementById("paymentSection").style.display = "none";
+            document.getElementById("availabilityMessage").style.display = "none";
+            dateSelect.innerHTML = "";
+            if (!city) return;
+
+            let dates = [];
+            if (city === "Порту") {
+              dates = ["2025-08-23", "2025-08-24"];
+            } else if (city === "Алгарве") {
+              dates = ["2025-08-28"];
+            } else if (city === "Лиссабон") {
+              dates = ["2025-08-30"];
+            }
+
+            dates.forEach(date => {
+              const option = document.createElement("option");
+              option.value = date;
+              option.text = new Date(date).toLocaleDateString("ru-RU");
+              dateSelect.appendChild(option);
+            });
+
+            dateSection.style.display = "block";
+            checkAvailability();
+          }
+
+          function checkAvailability() {
+            const city = document.getElementById("city").value;
+            const date = document.getElementById("eventDate").value;
+            const ticketType = document.querySelector('input[name="ticketType"]:checked')?.value;
+            const stripeButtonContainer = document.getElementById("stripeButtonContainer");
+            const stripeStandard = document.getElementById("stripeStandard");
+            const stripeStandardPlus = document.getElementById("stripeStandardPlus");
+            const stripeFamily = document.getElementById("stripeFamily");
+            const payCryptoLink = document.getElementById("payCryptoLink");
+            const payLocalBtn = document.getElementById("payLocalBtn");
+            const availabilityMessage = document.getElementById("availabilityMessage");
+            const nameSection = document.getElementById("nameSection");
+            const addressSection = document.getElementById("addressSection");
+            const paymentSection = document.getElementById("paymentSection");
+
+            if (!city || !date || !ticketType) {
+              stripeButtonContainer.style.display = "none";
+              stripeStandard.style.display = "none";
+              stripeStandardPlus.style.display = "none";
+              stripeFamily.style.display = "nowne";
+              payCryptoLink.style.display = "none";
+              payLocalBtn.disabled = true;
+              payLocalBtn.style.background = "gray";
+              availabilityMessage.style.display = "none";
+              nameSection.style.display = "none";
+              addressSection.style.display = "none";
+              paymentSection.style.display = "none";
+              return;
+            }
+
+            const addressText = {
+              "Порту": "R. do Cerro 396, 4405-736 Vila Nova de Gaia",
+              "Лиссабон": "Praia de Carcavelos, Лиссабон",
+              "Алгарве": "Praia da Rocha, Алгарве"
+            };
+            const mapLinks = {
+              "Порту": "https://maps.app.goo.gl/qwegq9geA1fnfzcT8",
+              "Лиссабон": "https://maps.google.com/?q=Praia+de+Carcavelos+Lisboa",
+              "Алгарве": "https://maps.google.com/?q=Praia+da+Rocha+Algarve"
+            };
+
+            addressSection.style.display = "block";
+            document.getElementById("addressText").innerText = addressText[city];
+            document.getElementById("mapLink").href = mapLinks[city];
+            nameSection.style.display = "block";
+            paymentSection.style.display = "block";
+
+            const tickets = ticketLimits[city]?.[date]?.[ticketType] || { total: 0, sold: 0 };
+            const isAvailable = tickets.sold < tickets.total;
+
+            const cryptoLinks = {
+              standard: 'https://nowpayments.io/payment/?iid=4948781828&source=button',
+              standardPlus: 'https://nowpayments.io/payment/?iid=5115039554&source=button',
+              family: 'https://nowpayments.io/payment/?iid=6307653663&source=button'
+            };
+
+            if (isAvailable) {
+              stripeButtonContainer.style.display = "inline-block";
+              stripeStandard.style.display = ticketType === 'standard' ? 'inline-block' : 'none';
+              stripeStandardPlus.style.display = ticketType === 'standardPlus' ? 'inline-block' : 'none';
+              stripeFamily.style.display = ticketType === 'family' ? 'inline-block' : 'none';
+              payCryptoLink.href = cryptoLinks[ticketType];
+              payCryptoLink.style.display = "inline-block";
+              payLocalBtn.disabled = false;
+              payLocalBtn.style.background = "blue";
+              availabilityMessage.style.display = "none";
+            } else {
+              stripeButtonContainer.style.display = "none";
+              stripeStandard.style.display = "none";
+              stripeStandardPlus.style.display = "none";
+              stripeFamily.style.display = "none";
+              payCryptoLink.style.display = "none";
+              payLocalBtn.disabled = true;
+              payLocalBtn.style.background = "gray";
+              availabilityMessage.style.display = "block";
+            }
+          }
+
+          // Местная система (заглушка)
+          document.getElementById("payLocalBtn").addEventListener('click', () => {
+            alert('Местная платежная система пока не интегрирована. Уточните детали.');
+          });
+        </script>
+      </body>
+    </html>
