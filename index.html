@@ -13,18 +13,58 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
 </head>
 <body>
-  <h1>Добро пожаловать!</h1>
-  <div class="ticket-form">
-    <h2>Купить билет</h2>
-    <label for="ticket-type">Тип билета:</label>
-    <select id="ticket-type">
-      <option value="standard">Стандартный (100 доступно)</option>
-      <option value="vip">VIP (50 доступно)</option>
-    </select>
-    <br><br>
-    <button onclick="buyTicket()">Купить</button>
-    <div id="ticket-info" class="ticket-info"></div>
+  <h1>Покупка билета на пенную вечеринку</h1>
+
+  <!-- Шаг 1: Город -->
+  <label for="city">Выберите город:</label>
+  <select id="city" onchange="updateDates()">
+    <option value="">-- Выберите --</option>
+    <option value="Порту">Порту</option>
+    <option value="Лиссабон">Лиссабон</option>
+    <option value="Алгарве">Алгарве</option>
+  </select>
+
+  <!-- Шаг 2: Дата и время -->
+  <div id="dateSection" style="display:none;">
+    <p><strong>Дата:</strong></p>
+    <select id="eventDate"></select>
+    <p><strong>Время:</strong> 15:00</p>
+
+    <!-- Шаг 3: Тип билета и количество -->
+    <p><strong>Выберите тип билета:</strong></p>
+    <input type="radio" name="ticketType" value="standard" onclick="updateTicketInfo()"> Стандарт — 30€<br>
+    <small>Включает: попкорн, сладкая вата, игры и участие в пене</small><br><br>
+    <input type="radio" name="ticketType" value="family" onclick="updateTicketInfo()"> Семейный — 70€<br>
+    <small>Включает: всё из стандарта + отдельное место со шведским столом и батутом</small><br>
+    <div id="quantitySection" style="display:none;">
+      <label for="ticketQuantity">Количество:</label>
+      <select id="ticketQuantity" onchange="updateTicketInfo()">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+      </select>
+      <div id="ticketAvailability" class="ticket-info"></div>
+    </div>
+
+    <!-- Шаг 4: Дополнительная опция -->
+    <div id="extrasSection" style="display:none;">
+      <p>Добавить шведский стол и батут за 15€?</p>
+      <input type="checkbox" id="addExtras">
+    </div>
+
+    <!-- Шаг 5: Адрес и карта -->
+    <div id="addressSection" style="display:none;">
+      <p><strong>Адрес мероприятия:</strong></p>
+      <div id="addressText"></div>
+      <a id="mapLink" href="#" target="_blank">Открыть в Google Картах</a>
+    </div>
+
+    <!-- Кнопка оплаты -->
+    <button id="payButton" style="display:none; background: gray;" onclick="buyTickets()">Оплатить</button>
   </div>
+
   <script>
     // Твой реальный firebaseConfig
     const firebaseConfig = {
@@ -48,9 +88,9 @@
     const db = firebase.database();
 
     // Инициализация ticketLimits
-    const ticketLimitsData = {
+    const initialTicketLimits = {
       standard: 100,
-      vip: 50,
+      family: 50,
       total: 150
     };
 
@@ -58,7 +98,7 @@
       const ticketLimitsRef = db.ref('ticketLimits');
       ticketLimitsRef.once('value', (snapshot) => {
         if (!snapshot.exists()) {
-          ticketLimitsRef.set(ticketLimitsData).then(() => {
+          ticketLimitsRef.set(initialTicketLimits).then(() => {
             console.log('ticketLimits успешно инициализированы!');
           }).catch((error) => {
             console.error('Ошибка инициализации:', error);
@@ -67,44 +107,136 @@
       });
     }
 
-    // Функция для покупки билета
-    function buyTicket() {
-      const ticketType = document.getElementById('ticket-type').value;
-      const ticketLimitsRef = db.ref('ticketLimits');
-      
-      ticketLimitsRef.once('value', (snapshot) => {
-        const limits = snapshot.val() || ticketLimitsData;
-        let newLimit = limits[ticketType];
+    function updateDates() {
+      const city = document.getElementById("city").value;
+      const dateSelect = document.getElementById("eventDate");
+      const dateSection = document.getElementById("dateSection");
 
-        if (newLimit > 0) {
-          newLimit -= 1;
-          ticketLimitsRef.update({ [ticketType]: newLimit, total: limits.total - 1 }).then(() => {
-            updateTicketInfo();
-            alert(`Билет ${ticketType} успешно куплен! Осталось: ${newLimit}`);
-          }).catch((error) => {
-            console.error('Ошибка покупки:', error);
-          });
-        } else {
-          alert(`Билеты типа ${ticketType} закончились!`);
-        }
+      dateSelect.innerHTML = "";
+
+      if (!city) {
+        dateSection.style.display = "none";
+        return;
+      }
+
+      let dates = [];
+      if (city === "Порту") {
+        dates = ["2025-08-23", "2025-08-24"];
+      } else if (city === "Алгарве") {
+        dates = ["2025-08-28"];
+      } else if (city === "Лиссабон") {
+        dates = ["2025-08-30"];
+      }
+
+      dates.forEach(date => {
+        const option = document.createElement("option");
+        option.value = date;
+        option.text = new Date(date).toLocaleDateString("ru-RU");
+        dateSelect.appendChild(option);
       });
+
+      dateSection.style.display = "block";
     }
 
-    // Обновление информации о билетах
     function updateTicketInfo() {
+      const ticketType = document.querySelector('input[name="ticketType"]:checked')?.value;
+      const quantitySection = document.getElementById("quantitySection");
+      const extrasSection = document.getElementById("extrasSection");
+      const addressSection = document.getElementById("addressSection");
+      const payButton = document.getElementById("payButton");
+
+      if (ticketType) {
+        quantitySection.style.display = "block";
+        extrasSection.style.display = ticketType === "standard" ? "block" : "none";
+        showAddress();
+        updateAvailability();
+      } else {
+        quantitySection.style.display = "none";
+        extrasSection.style.display = "none";
+        addressSection.style.display = "none";
+        payButton.style.display = "none";
+      }
+    }
+
+    function updateAvailability() {
+      const ticketType = document.querySelector('input[name="ticketType"]:checked')?.value;
+      const ticketQuantity = parseInt(document.getElementById("ticketQuantity").value);
+      const ticketAvailability = document.getElementById("ticketAvailability");
+
+      if (ticketType) {
+        const ticketLimitsRef = db.ref('ticketLimits');
+        ticketLimitsRef.once('value', (snapshot) => {
+          const limits = snapshot.val() || initialTicketLimits;
+          const available = limits[ticketType];
+          if (ticketQuantity <= available) {
+            ticketAvailability.innerText = `Доступно: ${available} билетов.`;
+            document.getElementById("payButton").style.background = "green";
+          } else {
+            ticketAvailability.innerText = `Недостаточно билетов. Доступно: ${available}.`;
+            document.getElementById("payButton").style.background = "gray";
+          }
+        });
+      }
+    }
+
+    function showAddress() {
+      const city = document.getElementById("city").value;
+      const addressText = {
+        "Порту": "R. do Cerro 396, 4405-736 Vila Nova de Gaia",
+        "Лиссабон": "Praia de Carcavelos, Лиссабон",
+        "Алгарве": "Praia da Rocha, Алгарве"
+      };
+      const mapLinks = {
+        "Порту": "https://maps.app.goo.gl/qwegq9geA1fnfzcT8",
+        "Лиссабон": "https://maps.google.com/?q=Praia+de+Carcavelos+Lisboa",
+        "Алгарве": "https://maps.google.com/?q=Praia+da+Rocha+Algarve"
+      };
+
+      const addressSection = document.getElementById("addressSection");
+      const payButton = document.getElementById("payButton");
+      if (city) {
+        document.getElementById("addressText").innerText = addressText[city];
+        document.getElementById("mapLink").href = mapLinks[city];
+        addressSection.style.display = "block";
+        payButton.style.display = "inline-block";
+      } else {
+        addressSection.style.display = "none";
+        payButton.style.display = "none";
+      }
+    }
+
+    function buyTickets() {
+      const ticketType = document.querySelector('input[name="ticketType"]:checked')?.value;
+      const ticketQuantity = parseInt(document.getElementById("ticketQuantity").value);
       const ticketLimitsRef = db.ref('ticketLimits');
-      ticketLimitsRef.on('value', (snapshot) => {
-        const limits = snapshot.val();
-        if (limits) {
-          document.getElementById('ticket-info').innerText = 
-            `Стандартные: ${limits.standard}, VIP: ${limits.vip}, Всего: ${limits.total}`;
+
+      if (!ticketType || !ticketQuantity) {
+        alert("Выберите тип и количество билетов!");
+        return;
+      }
+
+      ticketLimitsRef.once('value', (snapshot) => {
+        const limits = snapshot.val() || initialTicketLimits;
+        const available = limits[ticketType];
+
+        if (ticketQuantity <= available) {
+          const newLimit = available - ticketQuantity;
+          const newTotal = limits.total - ticketQuantity;
+          ticketLimitsRef.update({ [ticketType]: newLimit, total: newTotal }).then(() => {
+            alert(`Успешно куплено ${ticketQuantity} билет(ов) типа ${ticketType}! Остаток: ${newLimit}`);
+            updateAvailability();
+          }).catch((error) => {
+            console.error('Ошибка покупки:', error);
+            alert("Ошибка при покупке. Попробуйте снова.");
+          });
+        } else {
+          alert(`Недостаточно билетов. Доступно: ${available}.`);
         }
       });
     }
 
     // Инициализация при загрузке
     initializeTicketLimits();
-    updateTicketInfo();
   </script>
 </body>
 </html>
