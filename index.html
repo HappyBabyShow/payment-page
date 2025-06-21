@@ -10,10 +10,13 @@
     .crypto-button img { width: 200px; margin: 10px 0; }
     button { padding: 10px; margin: 5px; background: green; color: white; border: none; cursor: pointer; }
     button:disabled { background: gray; cursor: not-allowed; }
+    #stripeButtonContainer { margin-top: 10px; }
   </style>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
+  <!-- Подключение Stripe Buy Button -->
+  <script async src="https://js.stripe.com/v3/buy-button.js"></script>
 </head>
 <body>
   <h1>Покупка билета на пенную вечеринку</h1>
@@ -60,14 +63,14 @@
       <a id="mapLink" href="#" target="_blank">Открыть в Google Картах</a>
     </div>
 
-    <!-- Кнопки оплаты -->
+    <!-- Кнопки выбора способа оплаты -->
     <div id="paymentButtons" class="payment-buttons" style="display:none;">
       <h3>Выберите способ оплаты:</h3>
-      <button id="payFiat" onclick="buyTickets('fiat')">Оплатить картой (Stripe)</button>
+      <button id="payFiat" onclick="showStripePayment()">Оплатить картой (Stripe)</button>
       <button id="payCrypto" onclick="showCryptoPayment()">Оплатить криптовалютой (USDT/USDC)</button>
     </div>
 
-    <!-- Контейнер для кнопки Stripe или крипто-оплаты -->
+    <!-- Контейнеры для кнопок оплаты -->
     <div id="stripeButtonContainer" style="display:none;"></div>
     <div id="cryptoPaymentContainer" style="display:none;" class="crypto-button">
       <!-- Кнопки крипто-оплаты добавляются динамически -->
@@ -211,68 +214,55 @@
       }
     }
 
-    function buyTickets(paymentMethod) {
+    function showStripePayment() {
       const ticketType = document.querySelector('input[name="ticketType"]:checked')?.value;
       const ticketQuantity = parseInt(document.getElementById("ticketQuantity").value);
-      const ticketLimitsRef = db.ref('ticketLimits');
-      const payFiat = document.getElementById("payFiat");
-      const payCrypto = document.getElementById("payCrypto");
+      const stripeButtonContainer = document.getElementById("stripeButtonContainer");
+      const cryptoPaymentContainer = document.getElementById("cryptoPaymentContainer");
 
       if (!ticketType || !ticketQuantity) {
         alert("Выберите тип и количество билетов!");
         return;
       }
 
-      // Отключаем кнопки во время операции
-      payFiat.disabled = true;
-      payCrypto.disabled = true;
-      payFiat.style.background = "gray";
-      payCrypto.style.background = "gray";
+      // Очищаем контейнеры
+      stripeButtonContainer.innerHTML = '';
+      cryptoPaymentContainer.style.display = "none";
 
-      ticketLimitsRef.once('value', (snapshot) => {
-        const limits = snapshot.val() || initialTicketLimits;
-        const available = limits[ticketType];
+      // Определяем ID кнопки в зависимости от типа билета
+      let buyButtonId;
+      if (ticketType === "standard") {
+        buyButtonId = "buy_btn_1RbU8NLWvpIFJx0GGgRmvdc1"; // Стандарт, 30€
+      } else if (ticketType === "standardPlus") {
+        buyButtonId = "buy_btn_1RbaacLWvpIFJx0GW7dM1vJQ"; // Стандарт+, 45€
+      } else if (ticketType === "family") {
+        buyButtonId = "buy_btn_1RbcbtLWvpIFJx0GPWou4ymy"; // Семейный, 70€
+      }
 
-        if (ticketQuantity <= available) {
-          const newLimit = available - ticketQuantity;
-          const newTotal = limits.total - ticketQuantity;
-          ticketLimitsRef.update({ [ticketType]: newLimit, total: newTotal }).then(() => {
-            console.log(`Успешно куплено ${ticketQuantity} билет(ов) типа ${ticketType} через ${paymentMethod}`);
-            alert(`Успешно куплено ${ticketQuantity} билет(ов) типа ${ticketType} через ${paymentMethod}! Остаток: ${newLimit}`);
-            updateAvailability();
-          }).catch((error) => {
-            console.error('Ошибка покупки:', error);
-            alert("Ошибка при покупке. Попробуйте снова.");
-            payFiat.disabled = false;
-            payCrypto.disabled = false;
-            if (ticketQuantity <= available) {
-              payFiat.style.background = "green";
-              payCrypto.style.background = "green";
-            }
-          });
-        } else {
-          alert(`Недостаточно билетов. Доступно: ${available}.`);
-          payFiat.disabled = false;
-          payCrypto.disabled = false;
-          if (ticketQuantity <= available) {
-            payFiat.style.background = "green";
-            payCrypto.style.background = "green";
-          }
-        }
-      }).catch((error) => {
-        console.error('Ошибка доступа к базе:', error);
-        alert("Ошибка подключения к базе данных.");
-        payFiat.disabled = false;
-        payCrypto.disabled = false;
-        payFiat.style.background = "green";
-        payCrypto.style.background = "green";
-      });
+      // Создаем элемент кнопки Stripe
+      const stripeButton = document.createElement('stripe-buy-button');
+      stripeButton.setAttribute('buy-button-id', buyButtonId);
+      stripeButton.setAttribute('publishable-key', 'pk_live_51RahBHLWvpIFJx0GgW5tZ173sGzJgcZXUJVmecoqEKxrzxGLp9EpqhK64wXFUGYXjU2sxCuddytGRsWOf0sgagr700HovZduI6');
+      stripeButtonContainer.appendChild(stripeButton);
+      stripeButtonContainer.style.display = "block";
+
+      // Уменьшаем количество билетов только после успешной оплаты (Stripe обрабатывает это)
+      // Здесь только отображаем кнопку, оплата обновит данные через callback в Stripe Dashboard
     }
 
     function showCryptoPayment() {
       const ticketType = document.querySelector('input[name="ticketType"]:checked')?.value;
       const cryptoPaymentContainer = document.getElementById("cryptoPaymentContainer");
+      const stripeButtonContainer = document.getElementById("stripeButtonContainer");
+
+      if (!ticketType) {
+        alert("Выберите тип билета!");
+        return;
+      }
+
+      // Очищаем контейнеры
       cryptoPaymentContainer.innerHTML = '';
+      stripeButtonContainer.style.display = "none";
 
       let paymentLink;
       if (ticketType === "standard") {
