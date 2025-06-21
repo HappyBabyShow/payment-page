@@ -108,10 +108,12 @@
       ticketLimitsRef.once('value', (snapshot) => {
         if (!snapshot.exists()) {
           ticketLimitsRef.set(initialTicketLimits).then(() => {
-            console.log('ticketLimits успешно инициализированы!');
+            console.log('ticketLimits успешно инициализированы:', initialTicketLimits);
           }).catch((error) => {
             console.error('Ошибка инициализации:', error);
           });
+        } else {
+          console.log('Текущие ticketLimits:', snapshot.val());
         }
       });
     }
@@ -178,14 +180,15 @@
         const ticketLimitsRef = db.ref('ticketLimits');
         ticketLimitsRef.once('value', (snapshot) => {
           const limits = snapshot.val() || initialTicketLimits;
+          console.log('Полученные лимиты:', limits); // Отладка
           const available = limits[ticketType];
-          if (ticketQuantity <= available) {
-            ticketAvailability.innerText = `Доступно: ${available} билетов.`;
+          if (ticketQuantity <= (available || 0)) {
+            ticketAvailability.innerText = `Доступно: ${available || 0} билетов.`;
           } else {
-            ticketAvailability.innerText = `Недостаточно билетов. Доступно: ${available}.`;
+            ticketAvailability.innerText = `Недостаточно билетов. Доступно: ${available || 0}.`;
           }
         }).catch((error) => {
-          console.error('Ошибка проверки доступности:', error);
+          console.error('Ошибка доступа к базе:', error);
           ticketAvailability.innerText = 'Ошибка загрузки данных.';
         });
       }
@@ -239,6 +242,11 @@
         buyButtonId = "buy_btn_1RbcbtLWvpIFJx0GPWou4ymy"; // Семейный, 70€
       }
 
+      if (!buyButtonId) {
+        console.error("Не найден buyButtonId для типа билета:", ticketType);
+        return;
+      }
+
       // Создаем элемент кнопки Stripe
       const stripeButton = document.createElement('stripe-buy-button');
       stripeButton.setAttribute('buy-button-id', buyButtonId);
@@ -246,8 +254,8 @@
       stripeButtonContainer.appendChild(stripeButton);
       stripeButtonContainer.style.display = "block";
 
-      // Уменьшаем количество билетов только после успешной оплаты (Stripe обрабатывает это)
-      // Здесь только отображаем кнопку, оплата обновит данные через callback в Stripe Dashboard
+      // Отладка
+      console.log("Stripe button added with buyButtonId:", buyButtonId);
     }
 
     function showCryptoPayment() {
