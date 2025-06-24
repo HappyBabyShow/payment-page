@@ -20,7 +20,6 @@
 <body>
   <h1>Покупка билета на пенную вечеринку</h1>
 
-  <!-- Шаг 1: Город -->
   <label for="city">Выберите город:</label>
   <select id="city" onchange="updateDates()">
     <option value="">-- Выберите --</option>
@@ -29,13 +28,11 @@
     <option value="Алгарве">Алгарве</option>
   </select>
 
-  <!-- Шаг 2: Дата и время -->
   <div id="dateSection" style="display:none;">
     <p><strong>Дата:</strong></p>
     <select id="eventDate" onchange="updateTicketInfo()"></select>
     <p><strong>Время:</strong> 15:00</p>
 
-    <!-- Шаг 3: Тип билета -->
     <p><strong>Выберите тип билета:</strong></p>
     <input type="radio" name="ticketType" value="standard" onclick="updateTicketInfo()"> Стандарт — 30€<br>
     <small>Включает: попкорн, сладкая вата, игры и участие в пене</small><br><br>
@@ -45,57 +42,56 @@
     <small>Включает: всё из стандарта + отдельное место со шведским столом и батутом</small><br>
     <div id="ticketAvailability" class="ticket-info"></div>
 
-    <!-- Шаг 4: Адрес и карта -->
     <div id="addressSection" style="display:none;">
       <p><strong>Адрес мероприятия:</strong></p>
       <div id="addressText"></div>
       <a id="mapLink" href="#" target="_blank">Открыть в Google Картах</a>
     </div>
 
-    <!-- Кнопки выбора способа оплаты -->
     <div id="paymentButtons" class="payment-buttons" style="display:none;">
       <h3>Выберите способ оплаты:</h3>
       <button id="payFiat" onclick="showStripePayment()">Оплатить картой (Stripe)</button>
       <button id="payCrypto" onclick="showCryptoPayment()">Оплатить криптовалютой (USDT/USDC)</button>
     </div>
 
-    <!-- Контейнеры для кнопок оплаты -->
     <div id="stripeButtonContainer" style="display:none;"></div>
     <div id="cryptoPaymentContainer" style="display:none;" class="crypto-button"></div>
   </div>
 
   <script>
-    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyAmTFbs5fX2r-y7NnHOSWz6lC9wGOW9cPs",
       authDomain: "foam-party-tickets-980c1.firebaseapp.com",
       databaseURL: "https://foam-party-tickets-980c1-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "foam-party-tickets-980c1",
-      storageBucket: "foam-party-tickets-980c1.firebasestorage.app",
+      storageBucket: "foam-party-tickets-980c1.appspot.com",
       messagingSenderId: "65345044953",
       appId: "1:65345044953:web:fb02ce3901f9d4e684d9c8"
     };
 
-    // Инициализация Firebase
     const app = firebase.initializeApp(firebaseConfig);
     const appCheck = firebase.appCheck();
     appCheck.activate('6LewxGcrAAAAAEzqFq67oZepY8fi9AcqTVYo-GcM', true);
     const db = firebase.database();
 
-    // Инициализация ticketLimits
-    const initialTicketLimits = {
-      standard: 100,
-      standardPlus: 50,
-      family: 30,
-      total: 180
-    };
-
     function initializeTicketLimits() {
       const ticketLimitsRef = db.ref('ticketLimits');
       ticketLimitsRef.once('value', (snapshot) => {
         if (!snapshot.exists()) {
-          ticketLimitsRef.set(initialTicketLimits).then(() => {
-            console.log('ticketLimits успешно инициализированы:', initialTicketLimits);
+          const newLimits = {
+            "Порту": {
+              "2025-08-23": { standard: 30, standardPlus: 20, family: 20, total: 70 },
+              "2025-08-24": { standard: 30, standardPlus: 20, family: 20, total: 70 }
+            },
+            "Алгарве": {
+              "2025-08-28": { standard: 30, standardPlus: 20, family: 20, total: 70 }
+            },
+            "Лиссабон": {
+              "2025-08-30": { standard: 30, standardPlus: 20, family: 20, total: 70 }
+            }
+          };
+          ticketLimitsRef.set(newLimits).then(() => {
+            console.log('ticketLimits успешно инициализированы:', newLimits);
           }).catch((error) => {
             console.error('Ошибка инициализации:', error);
           });
@@ -137,17 +133,25 @@
     }
 
     function updateTicketInfo() {
+      const city = document.getElementById("city").value;
+      const eventDate = document.getElementById("eventDate").value;
       const ticketType = document.querySelector('input[name="ticketType"]:checked')?.value;
       const ticketAvailability = document.getElementById("ticketAvailability");
       const paymentButtons = document.getElementById("paymentButtons");
       const stripeButtonContainer = document.getElementById("stripeButtonContainer");
       const cryptoPaymentContainer = document.getElementById("cryptoPaymentContainer");
 
-      if (ticketType) {
-        const ticketLimitsRef = db.ref('ticketLimits');
+      if (ticketType && city && eventDate) {
+        const path = `ticketLimits/${city}/${eventDate}`;
+        const ticketLimitsRef = db.ref(path);
+
         ticketLimitsRef.once('value', (snapshot) => {
-          const limits = snapshot.val() || initialTicketLimits;
-          console.log('Полученные лимиты:', limits); // Отладка
+          const limits = snapshot.val();
+          if (!limits) {
+            ticketAvailability.innerText = 'Нет информации о билетах.';
+            paymentButtons.style.display = "none";
+            return;
+          }
           const available = limits[ticketType] || 0;
           if (available >= 1) {
             ticketAvailability.innerText = `Доступно: ${available} билетов.`;
@@ -161,6 +165,7 @@
           ticketAvailability.innerText = 'Ошибка загрузки данных.';
           paymentButtons.style.display = "none";
         });
+
         showAddress();
       } else {
         ticketAvailability.innerText = "";
@@ -208,16 +213,11 @@
 
       let buyButtonId;
       if (ticketType === "standard") {
-        buyButtonId = "buy_btn_1RbU8NLWvpIFJx0GGgRmvdc1"; // Стандарт, 30€
+        buyButtonId = "buy_btn_1RbU8NLWvpIFJx0GGgRmvdc1";
       } else if (ticketType === "standardPlus") {
-        buyButtonId = "buy_btn_1RbaacLWvpIFJx0GW7dM1vJQ"; // Стандарт+, 45€
+        buyButtonId = "buy_btn_1RbaacLWvpIFJx0GW7dM1vJQ";
       } else if (ticketType === "family") {
-        buyButtonId = "buy_btn_1RbcbtLWvpIFJx0GPWou4ymy"; // Семейный, 70€
-      }
-
-      if (!buyButtonId) {
-        console.error("Не найден buyButtonId для типа билета:", ticketType);
-        return;
+        buyButtonId = "buy_btn_1RbcbtLWvpIFJx0GPWou4ymy";
       }
 
       const stripeButton = document.createElement('stripe-buy-button');
@@ -225,8 +225,6 @@
       stripeButton.setAttribute('publishable-key', 'pk_live_51RahBHLWvpIFJx0GgW5tZ173sGzJgcZXUJVmecoqEKxrzxGLp9EpqhK64wXFUGYXjU2sxCuddytGRsWOf0sgagr700HovZduI6');
       stripeButtonContainer.appendChild(stripeButton);
       stripeButtonContainer.style.display = "block";
-
-      console.log("Stripe button added with buyButtonId:", buyButtonId);
     }
 
     function showCryptoPayment() {
@@ -263,7 +261,6 @@
       cryptoPaymentContainer.style.display = "block";
     }
 
-    // Инициализация при загрузке
     initializeTicketLimits();
   </script>
 </body>
