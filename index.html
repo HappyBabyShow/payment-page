@@ -222,9 +222,16 @@
         buyButtonId = "buy_btn_1Rgv3SLWvpIFJx0Gnh6ipiDU";
       }
 
+      // Добавляем получение города и даты
+      const city = document.getElementById('city').value;
+      const eventDate = document.getElementById('eventDate').value;
+      const clientRef = `${ticketType}:${city}:${eventDate}`;
+      console.log('Client reference ID set to:', clientRef); // Отладка
+
       const stripeButton = document.createElement('stripe-buy-button');
       stripeButton.setAttribute('buy-button-id', buyButtonId);
       stripeButton.setAttribute('publishable-key', publishableKey);
+      stripeButton.setAttribute('client-reference-id', clientRef); // Добавляем client_reference_id
       stripeButtonContainer.appendChild(stripeButton);
       stripeButtonContainer.style.display = "block";
     }
