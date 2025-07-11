@@ -1,199 +1,86 @@
-      <!DOCTYPE html>
-      <html lang="ru">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Покупка билета — Пенная вечеринка</title>
-        <style>
-          body { 
-            font-family: Arial, sans-serif; 
-            margin: 0; 
-            padding: 0;
-            background-image: url('path/to/your/image.jpg');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            min-height: 100vh;
-            width: 100vw;
-          }
-          .container {
-            min-height: 100vh;
-            width: 100vw;
-            padding: 10px;
-            box-sizing: border-box;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding-top: 60px; /* Пространство для фиксированной панели языков на мобильных */
-          }
-          .ticket-form { 
-            max-width: 400px; 
-            padding: 20px; 
-            border: 1px solid #ccc; 
-            border-radius: 5px; 
-            background: rgba(255, 255, 255, 0.9); 
-            width: 90%;
-          }
-          .payment-buttons { margin-top: 10px; }
-          button { 
-            padding: 10px; 
-            margin: 5px; 
-            background: green; 
-            color: white; 
-            border: none; 
-            cursor: pointer; 
-            border-radius: 5px; 
-            width: 100%;
-            font-size: 16px;
-          }
-          button:disabled { background: gray; cursor: not-allowed; }
-          #stripeButtonContainer { margin-top: 10px; }
-          select, input[type="radio"] { margin: 5px 0; }
-          .language-switch { 
-            position: fixed;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.9);
-            padding: 5px 10px;
-            border-radius: 5px;
-            z-index: 1000;
-          }
-          .language-switch button {
-            padding: 5px 10px;
-            margin: 0 5px;
-            font-size: 14px;
-            width: auto;
-          }
-          #login-section { 
-            display: none; 
-            margin-top: 20px; 
-            background: rgba(255, 255, 255, 0.9); 
-            padding: 20px; 
-            border-radius: 10px; 
-            width: 90%;
-          }
-          #login-section.active { display: block; }
-          #main-content { 
-            display: none; 
-            background: rgba(255, 255, 255, 0.9); 
-            padding: 20px; 
-            border-radius: 10px; 
-            width: 90%;
-          }
-          #main-content.active { display: block; }
-          input[type="email"], input[type="password"] {
-            padding: 8px;
-            margin: 5px 0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            width: 100%;
-            box-sizing: border-box;
-            font-size: 16px;
-          }
-          select {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            width: 100%;
-            font-size: 16px;
-          }
-          #dateSection p, #addressSection p, #ticket-type-label {
-            font-size: 16px;
-          }
-          small {
-            font-size: 14px;
-          }
-          @media (max-width: 600px) {
-            .ticket-form, #login-section, #main-content {
-              width: 100%;
-              padding: 15px;
-            }
-            button {
-              font-size: 14px;
-            }
-            .language-switch {
-              top: 5px;
-              padding: 2px 5px;
-            }
-            .language-switch button {
-              padding: 3px 8px;
-              font-size: 12px;
-            }
-            #dateSection p, #addressSection p, #ticket-type-label {
-              font-size: 14px;
-            }
-            small {
-              font-size: 12px;
-            }
-            input[type="email"], input[type="password"], select {
-              font-size: 14px;
-            }
-          }
-        </style>
-        <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
-        <script async src="https://js.stripe.com/v3/buy-button.js"></script>
-      </head>
-      <body>
-        <div class="container">
-          <div id="login-section">
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Покупка билета — Пенная вечеринка</title>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
+    <script async src="https://js.stripe.com/v3/buy-button.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div id="login-section" class="auth-section">
             <h2>Вход для администратора</h2>
             <input type="email" id="email" placeholder="Email" required><br>
             <input type="password" id="password" placeholder="Пароль" required><br>
             <button onclick="login()">Войти</button>
             <p id="login-status"></p>
-          </div>
-          <div id="main-content">
+        </div>
+
+        <div id="main-content" class="main-content">
             <div class="language-switch">
-              <button onclick="changeLanguage('ru')">Русский</button>
-              <button onclick="changeLanguage('uk')">Українська</button>
-              <button onclick="changeLanguage('pt')">Português</button>
+                <button onclick="changeLanguage('ru')">Русский</button>
+                <button onclick="changeLanguage('uk')">Українська</button>
+                <button onclick="changeLanguage('pt')">Português</button>
             </div>
             <h1 id="page-title">Покупка билета — Пенная вечеринка</h1>
 
             <label for="city" id="city-label">Выберите город:</label>
             <select id="city" onchange="updateDates()">
-              <option value="">-- Выберите --</option>
-              <option value="Порту">Порту</option>
-              <option value="Лиссабон">Лиссабон</option>
-              <option value="Алгарве">Алгарве</option>
+                <option value="">-- Выберите --</option>
+                <option value="Порту">Порту</option>
+                <option value="Лиссабон">Лиссабон</option>
+                <option value="Алгарве">Алгарве</option>
             </select>
 
-            <div id="dateSection" style="display:none;">
-              <p><strong id="date-label">Дата:</strong></p>
-              <select id="eventDate" onchange="updateTicketInfo()"></select>
-              <p><strong id="time-label">Время:</strong> 15:00</p>
+            <div id="dateSection" class="section" style="display:none;">
+                <p><strong id="date-label">Дата:</strong></p>
+                <select id="eventDate" onchange="updateTicketInfo()"></select>
+                <p><strong id="time-label">Время:</strong> 15:00</p>
 
-              <p><strong id="ticket-type-label">Выберите тип билета:</strong></p>
-              <input type="radio" name="ticketType" value="standard" onclick="updateTicketInfo()"><span id="standard-label"> Стандарт — 30€</span><br>
-              <small id="standard-desc">Включает: попкорн, сладкая вата, игры и участие в пене</small><br><br>
-              <input type="radio" name="ticketType" value="standardPlus" onclick="updateTicketInfo()"><span id="standardPlus-label"> Стандарт+ — 45€</span><br>
-              <small id="standardPlus-desc">Включает: всё из стандарта + шведский стол и батут</small><br><br>
-              <input type="radio" name="ticketType" value="family" onclick="updateTicketInfo()" style="display:none;"><span id="family-label" style="display:none;"> Семейный — 70€</span><br>
-              <small id="family-desc" style="display:none;">Включает: всё из стандарта + отдельное место со шведским столом и батутом</small><br>
-              <div id="ticketAvailability" class="ticket-info"></div>
+                <p><strong id="ticket-type-label">Выберите тип билета:</strong></p>
+                <div class="ticket-options">
+                    <label>
+                        <input type="radio" name="ticketType" value="standard" onclick="updateTicketInfo()">
+                        <span id="standard-label"> Стандарт   30€</span>
+                        <small id="standard-desc">Включает: вход для одного ребенка, попкорн, сладкая вата, игры и участие в пене</small>
+                    </label>
+                    <label>
+                        <input type="radio" name="ticketType" value="standardPlus" onclick="updateTicketInfo()">
+                        <span id="standardPlus-label"> Стандарт+   45€</span>
+                        <small id="standardPlus-desc">Включает: вход для одного ребенка все как из обычного билета + шведский стол и батут или взрослого с участием в активностях для взрослых </small>
+                    </label>
+                    <label>
+                        <input type="radio" name="ticketType" value="family" onclick="updateTicketInfo()">
+                        <span id="family-label"> Семейный   70€</span>
+                        <small id="family-desc">Включает: вход для одного ребенка и взрослого, всё из стандарта + отдельное место со шведским столом и батутом и досугом для взрослого</small>
+                    </label>
+                </div>
+                
+                <div id="ticketAvailability" class="ticket-info"></div>
 
-              <div id="addressSection" style="display:none;">
-                <p><strong id="address-label">Адрес мероприятия:</strong></p>
-                <div id="addressText"></div>
-                <a id="mapLink" href="#" target="_blank">Открыть в Google Картах</a>
-              </div>
+                <div id="addressSection" class="section" style="display:none;">
+                    <p><strong id="address-label">Адрес мероприятия:</strong></p>
+                    <div id="addressText"></div>
+                    <a id="mapLink" href="#" target="_blank">Открыть в Google Картах</a>
+                </div>
 
-              <div id="paymentButtons" class="payment-buttons" style="display:none;">
-                <h3 id="payment-label">Выберите способ оплаты:</h3>
-                <button id="payFiat" onclick="showStripePayment()">Оплатить картой (Stripe)</button>
-              </div>
+                <div id="paymentButtons" class="payment-buttons" style="display:none;">
+                    <h3 id="payment-label">Выберите способ оплаты:</h3>
+                    <button id="payFiat" onclick="showStripePayment()">Оплатить картой (Stripe)</button>
+                </div>
 
-              <div id="stripeButtonContainer" style="display:none;"></div>
+                <div id="stripeButtonContainer" style="display:none;"></div>
             </div>
-          </div>
         </div>
+    </div>
 
-        <script>
-          const firebaseConfig = {
+    <script>
+        const firebaseConfig = {
             apiKey: "AIzaSyAmTFbs5fX2r-y7NnHOSWz6lC9wGOW9cPs",
             authDomain: "foam-party-tickets-980c1.firebaseapp.com",
             databaseURL: "https://foam-party-tickets-980c1-default-rtdb.europe-west1.firebasedatabase.app",
@@ -201,74 +88,83 @@
             storageBucket: "foam-party-tickets-980c1.appspot.com",
             messagingSenderId: "65345044953",
             appId: "1:65345044953:web:fb02ce3901f9d4e684d9c8"
-          };
+        };
 
-          const app = firebase.initializeApp(firebaseConfig);
-          const auth = firebase.auth();
-          const appCheck = firebase.appCheck();
-          appCheck.activate('6LewxGcrAAAAAEzqFq67oZepY8fi9AcqTVYo-GcM', true);
-          const db = firebase.database();
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const appCheck = firebase.appCheck();
+        appCheck.activate('6LewxGcrAAAAAEzqFq67oZepY8fi9AcqTVYo-GcM', true);
+        const db = firebase.database();
 
-          const translations = {
+        const translations = {
             ru: {
-              pageTitle: "Покупка билета — Пенная вечеринка",
-              cityLabel: "Выберите город:",
-              dateLabel: "Дата:",
-              timeLabel: "Время:",
-              ticketTypeLabel: "Выберите тип билета:",
-              standardLabel: " Стандарт — 30€",
-              standardDesc: "Включает: попкорн, сладкая вата, игры и участие в пене",
-              standardPlusLabel: " Стандарт+ — 45€",
-              standardPlusDesc: "Включает: всё из стандарта + шведский стол и батут",
-              familyLabel: " Семейный — 70€",
-              familyDesc: "Включает: всё из стандарта + отдельное место со шведским столом и батутом",
-              paymentLabel: "Выберите способ оплаты:",
-              addressLabel: "Адрес мероприятия:",
-              payFiat: "Оплатить картой (Stripe)",
-              loginTitle: "Вход для администратора",
-              loginStatus: "Введите email и пароль для входа."
+                pageTitle: "Покупка билета — Пенная вечеринка",
+                cityLabel: "Выберите город:",
+                dateLabel: "Дата:",
+                timeLabel: "Время:",
+                ticketTypeLabel: "Выберите тип билета:",
+                standardLabel: " Стандарт   30€",
+                // Обновленный текст
+                standardDesc: "Включает: вход для одного ребенка, попкорн, сладкая вата, игры и участие в пене",
+                standardPlusLabel: " Стандарт+   45€",
+                // Обновленный текст
+                standardPlusDesc: "Включает: вход для одного ребенка все как из обычного билета + шведский стол и батут или взрослого с участием в активностях для взрослых",
+                familyLabel: " Семейный   70€",
+                // Обновленный текст
+                familyDesc: "Включает: вход для одного ребенка и взрослого, всё из стандарта + отдельное место со шведским столом и батутом и досугом для взрослого",
+                paymentLabel: "Выберите способ оплаты:",
+                addressLabel: "Адрес мероприятия:",
+                payFiat: "Оплатить картой (Stripe)",
+                loginTitle: "Вход для администратора",
+                loginStatus: "Введите email и пароль для входа."
             },
             uk: {
-              pageTitle: "Покупка квитка — Пінна вечірка",
-              cityLabel: "Оберіть місто:",
-              dateLabel: "Дата:",
-              timeLabel: "Час:",
-              ticketTypeLabel: "Оберіть тип квитка:",
-              standardLabel: " Стандарт — 30€",
-              standardDesc: "Включає: попкорн, цукрова вата, ігри та участь у піні",
-              standardPlusLabel: " Стандарт+ — 45€",
-              standardPlusDesc: "Включає: усе зі стандарту + шведський стіл і батут",
-              familyLabel: " Сімейний — 70€",
-              familyDesc: "Включає: усе зі стандарту + окреме місце зі шведським столом і батутом",
-              paymentLabel: "Оберіть спосіб оплати:",
-              addressLabel: "Адреса заходу:",
-              payFiat: "Оплатити карткою (Stripe)",
-              loginTitle: "Вхід для адміністратора",
-              loginStatus: "Введіть email і пароль для входу."
+                pageTitle: "Покупка квитка — Пінна вечірка",
+                cityLabel: "Оберіть місто:",
+                dateLabel: "Дата:",
+                timeLabel: "Час:",
+                ticketTypeLabel: "Оберіть тип квитка:",
+                standardLabel: " Стандарт   30€",
+                // Обновленный текст
+                standardDesc: "Включає: вхід для однієї дитини, попкорн, солодка вата, ігри та участь у піні",
+                standardPlusLabel: " Стандарт+   45€",
+                // Обновленный текст
+                standardPlusDesc: "Включає: вхід для однієї дитини все як зі звичайного квитка + шведський стіл і батут або дорослого за участю в активностях для дорослих",
+                familyLabel: " Сімейний   70€",
+                // Обновленный текст
+                familyDesc: "Включає: вхід для однієї дитини та дорослого, все зі стандарту + окреме місце зі шведським столом і батутом та дозвіллям для дорослого",
+                paymentLabel: "Оберіть спосіб оплати:",
+                addressLabel: "Адреса заходу:",
+                payFiat: "Оплатити карткою (Stripe)",
+                loginTitle: "Вхід для адміністратора",
+                loginStatus: "Введіть email і пароль для входу."
             },
             pt: {
-              pageTitle: "Compra de Bilhete — Festa de Espuma",
-              cityLabel: "Selecione a cidade:",
-              dateLabel: "Data:",
-              timeLabel: "Hora:",
-              ticketTypeLabel: "Selecione o tipo de bilhete:",
-              standardLabel: " Standard — 30€",
-              standardDesc: "Inclui: pipocas, algodão-doce, jogos e participação na espuma",
-              standardPlusLabel: " Standard+ — 45€",
-              standardPlusDesc: "Inclui: tudo do standard + buffet e trampolim",
-              familyLabel: " Familiar — 70€",
-              familyDesc: "Inclui: tudo do standard + espaço separado com buffet e trampolim",
-              paymentLabel: "Selecione o método de pagamento:",
-              addressLabel: "Endereço do evento:",
-              payFiat: "Pagar com cartão (Stripe)",
-              loginTitle: "Entrada para o Administrador",
-              loginStatus: "Insira o email e a senha para entrar."
+                pageTitle: "Compra de Bilhete — Festa de Espuma",
+                cityLabel: "Selecione a cidade:",
+                dateLabel: "Data:",
+                timeLabel: "Hora:",
+                ticketTypeLabel: "Selecione o tipo de bilhete:",
+                standardLabel: " Standard   30€",
+                // Обновленный текст
+                standardDesc: "Inclui: entrada para uma criança, pipocas, algodão-doce, jogos e participação na espuma",
+                standardPlusLabel: " Standard+   45€",
+                // Обновленный текст
+                standardPlusDesc: "Inclui: entrada para uma criança tudo do bilhete normal + buffet e trampolim ou adulto com participação em atividades para adultos",
+                familyLabel: " Familiar   70€",
+                // Обновленный текст
+                familyDesc: "Inclui: entrada para uma criança e um adulto, tudo do standard + espaço separado com buffet e trampolim e atividades para adultos",
+                paymentLabel: "Selecione o método de pagamento:",
+                addressLabel: "Endereço do evento:",
+                payFiat: "Pagar com cartão (Stripe)",
+                loginTitle: "Entrada para o Administrador",
+                loginStatus: "Insira o email e a senha para entrar."
             }
-          };
+        };
 
-          let currentLanguage = 'ru';
+        let currentLanguage = 'ru';
 
-          function changeLanguage(lang) {
+        function changeLanguage(lang) {
             currentLanguage = lang;
             document.getElementById('page-title').textContent = translations[lang].pageTitle;
             document.getElementById('city-label').textContent = translations[lang].cityLabel;
@@ -286,87 +182,86 @@
             document.getElementById('payFiat').textContent = translations[lang].payFiat;
             document.querySelector('#login-section h2').textContent = translations[lang].loginTitle;
             document.getElementById('login-status').textContent = translations[lang].loginStatus;
-            updateTicketInfo();
-          }
+            updateTicketInfo(); // Обновляем отображение при смене языка
+        }
 
-          function login() {
+        function login() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const loginStatus = document.getElementById('login-status');
 
             auth.signInWithEmailAndPassword(email, password)
-              .then((userCredential) => {
-                loginStatus.textContent = 'Вход успешен! Перенаправление...';
-                document.getElementById('login-section').classList.remove('active');
-                document.getElementById('main-content').classList.add('active');
-                initializeTicketLimits();
-              })
-              .catch((error) => {
-                loginStatus.textContent = `Ошибка входа: ${error.message}`;
-              });
-          }
+                .then((userCredential) => {
+                    loginStatus.textContent = 'Вход успешен! Перенаправление...';
+                    document.getElementById('login-section').classList.remove('active');
+                    document.getElementById('main-content').classList.add('active');
+                    initializeTicketLimits();
+                })
+                .catch((error) => {
+                    loginStatus.textContent = `Ошибка входа: ${error.message}`;
+                });
+        }
 
-          function initializeTicketLimits() {
-            if (!auth.currentUser) return;
+        function initializeTicketLimits() {
+            if (!auth.currentUser) return; // Только для авторизованных админов
             const ticketLimitsRef = db.ref('ticketLimits');
             ticketLimitsRef.once('value', (snapshot) => {
-              if (!snapshot.exists()) {
-                const newLimits = {
-                  "Порту": {
-                    "2025-08-23": { standard: 30, standardPlus: 20, family: 20, total: 70 },
-                    "2025-08-24": { standard: 30, standardPlus: 20, family: 20, total: 70 }
-                  },
-                  "Алгарве": {
-                    "2025-08-28": { standard: 60, standardPlus: 40, total: 100 }
-                  },
-                  "Лиссабон": {
-                    "2025-08-30": { standard: 50, standardPlus: 25, family: 25, total: 100 }
-                  }
-                };
-                ticketLimitsRef.set(newLimits).then(() => {
-                  console.log('ticketLimits успешно инициализированы:', newLimits);
-                }).catch((error) => {
-                  console.error('Ошибка инициализации:', error);
-                });
-              } else {
-                console.log('Текущие ticketLimits:', snapshot.val());
-              }
+                if (!snapshot.exists()) {
+                    const newLimits = {
+                        "Порту": {
+                            "2025-08-23": { standard: 30, standardPlus: 20, family: 20, total: 70 },
+                            "2025-08-24": { standard: 30, standardPlus: 20, family: 20, total: 70 }
+                        },
+                        "Алгарве": {
+                            "2025-08-28": { standard: 60, standardPlus: 40, total: 100 }
+                        },
+                        "Лиссабон": {
+                            "2025-08-30": { standard: 50, standardPlus: 25, family: 25, total: 100 }
+                        }
+                    };
+                    ticketLimitsRef.set(newLimits).then(() => {
+                        console.log('ticketLimits успешно инициализированы:', newLimits);
+                    }).catch((error) => {
+                        console.error('Ошибка инициализации:', error);
+                    });
+                } else {
+                    console.log('Текущие ticketLimits:', snapshot.val());
+                }
             });
-          }
+        }
 
-          function updateDates() {
-            if (!auth.currentUser && window.location.href.includes('admin')) return;
+        function updateDates() {
             const city = document.getElementById("city").value;
             const dateSelect = document.getElementById("eventDate");
             const dateSection = document.getElementById("dateSection");
 
             dateSelect.innerHTML = "";
             if (!city) {
-              dateSection.style.display = "none";
-              return;
+                dateSection.style.display = "none";
+                return;
             }
 
             let dates = [];
             if (city === "Порту") {
-              dates = ["2025-08-23", "2025-08-24"];
+                dates = ["2025-08-23", "2025-08-24"];
             } else if (city === "Алгарве") {
-              dates = ["2025-08-28"];
+                dates = ["2025-08-28"];
             } else if (city === "Лиссабон") {
-              dates = ["2025-08-30"];
+                dates = ["2025-08-30"];
             }
 
             dates.forEach(date => {
-              const option = document.createElement("option");
-              option.value = date;
-              option.text = new Date(date).toLocaleDateString(translations[currentLanguage] === translations['pt'] ? 'pt-PT' : 'ru-RU');
-              dateSelect.appendChild(option);
+                const option = document.createElement("option");
+                option.value = date;
+                option.text = new Date(date).toLocaleDateString(translations[currentLanguage] === translations['pt'] ? 'pt-PT' : 'ru-RU');
+                dateSelect.appendChild(option);
             });
 
             dateSection.style.display = "block";
             updateTicketInfo();
-          }
+        }
 
-          function updateTicketInfo() {
+        function updateTicketInfo() {
             const city = document.getElementById("city").value;
             const eventDate = document.getElementById("eventDate").value;
             const ticketType = document.querySelector('input[name="ticketType"]:checked')?.value;
@@ -375,74 +270,74 @@
             const stripeButtonContainer = document.getElementById("stripeButtonContainer");
 
             if (ticketType && city && eventDate) {
-              const path = `ticketLimits/${city}/${eventDate}`;
-              const ticketLimitsRef = db.ref(path);
+                const path = `ticketLimits/${city}/${eventDate}`;
+                const ticketLimitsRef = db.ref(path);
 
-              ticketLimitsRef.once('value', (snapshot) => {
-                const limits = snapshot.val();
-                if (!limits) {
-                  ticketAvailability.innerText = 'Нет информации о билетах.';
-                  paymentButtons.style.display = "none";
-                  return;
-                }
-                const available = limits[ticketType] || 0;
-                if (available >= 1) {
-                  ticketAvailability.innerText = `Доступно: ${available} билетов.`; // Заменить на перевод при необходимости
-                  paymentButtons.style.display = "block";
-                } else {
-                  ticketAvailability.innerText = `Билеты закончились.`; // Заменить на перевод при необходимости
-                  paymentButtons.style.display = "none";
-                }
-              }).catch((error) => {
-                console.error('Ошибка Firebase:', error);
-                ticketAvailability.innerText = 'Ошибка загрузки данных.';
-                paymentButtons.style.display = "none";
-              });
+                ticketLimitsRef.once('value', (snapshot) => {
+                    const limits = snapshot.val();
+                    if (!limits) {
+                        ticketAvailability.innerText = 'Нет информации о билетах.';
+                        paymentButtons.style.display = "none";
+                        return;
+                    }
+                    const available = limits[ticketType] || 0;
+                    if (available >= 1) {
+                        ticketAvailability.innerText = `Доступно: ${available} билетов.`; // Заменить на перевод при необходимости
+                        paymentButtons.style.display = "block";
+                    } else {
+                        ticketAvailability.innerText = `Билеты закончились.`; // Заменить на перевод при необходимости
+                        paymentButtons.style.display = "none";
+                    }
+                }).catch((error) => {
+                    console.error('Ошибка Firebase:', error);
+                    ticketAvailability.innerText = 'Ошибка загрузки данных.';
+                    paymentButtons.style.display = "none";
+                });
 
-              showAddress();
+                showAddress();
             } else {
-              ticketAvailability.innerText = "";
-              paymentButtons.style.display = "none";
-              stripeButtonContainer.style.display = "none";
+                ticketAvailability.innerText = "";
+                paymentButtons.style.display = "none";
+                stripeButtonContainer.style.display = "none";
             }
-          }
+        }
 
-          function showAddress() {
+        function showAddress() {
             const city = document.getElementById("city").value;
             const addressText = {
-              "Порту": "R. do Cerro 396, 4405-736 Vila Nova de Gaia",
-              "Лиссабон": "Praia de Carcavelos, Лиссабон",
-              "Алгарве": "Praia da Rocha, Алгарве"
+                "Порту": "R. do Cerro 396, 4405-736 Vila Nova de Gaia",
+                "Лиссабон": "Praia de Carcavelos, Лиссабон",
+                "Алгарве": "Odiáxere, Алгарве"
             };
             const mapLinks = {
-              "Порту": "https://maps.app.goo.gl/qwegq9geA1fnfzcT8",
-              "Лиссабон": "https://maps.google.com/?q=Praia+de+Carcavelos+Lisboa",
-              "Алгарве": "https://maps.google.com/?q=Praia+da+Rocha+Algarve"
+                "Порту": "https://maps.app.goo.gl/qwegq9geA1fnfzcT8",
+                "Лиссабон": "https://maps.google.com/?q=Praia+de+Carcavelos+Lisboa",
+                "Алгарве": "https://maps.app.goo.gl/BJVBge5VNtW2PFnp9"
             };
 
             const addressSection = document.getElementById("addressSection");
             if (city) {
-              document.getElementById("addressText").innerText = addressText[city];
-              document.getElementById("mapLink").href = mapLinks[city];
-              addressSection.style.display = "block";
+                document.getElementById("addressText").innerText = addressText[city];
+                document.getElementById("mapLink").href = mapLinks[city];
+                addressSection.style.display = "block";
             } else {
-              addressSection.style.display = "none";
+                addressSection.style.display = "none";
             }
-          }
+        }
 
-          function showStripePayment() {
+        function showStripePayment() {
             const ticketType = document.querySelector('input[name="ticketType"]:checked')?.value;
             const city = document.getElementById('city').value;
             const stripeButtonContainer = document.getElementById("stripeButtonContainer");
 
             if (!ticketType) {
-              alert("Выберите тип билета!");
-              return;
+                alert("Выберите тип билета!");
+                return;
             }
 
             if (!city) {
-              alert("Выберите город!");
-              return;
+                alert("Выберите город!");
+                return;
             }
 
             stripeButtonContainer.innerHTML = '';
@@ -450,33 +345,34 @@
             let buyButtonId;
             const publishableKey = "pk_live_51RahBHLWvpIFJx0GgW5tZ173sGzJgcZXUJVmecoqEKxrzxGLp9EpqhK64wXFUGYXjU2sxCuddytGRsWOf0sgagr700HovZduI6";
 
+            // Выбор buy-button-id в зависимости от города и типа билета
             if (city === "Алгарве") {
-              if (ticketType === "standard") {
-                buyButtonId = "buy_btn_1RjVN9LWvpIFJx0GtngIPHMH";
-              } else if (ticketType === "standardPlus") {
-                buyButtonId = "buy_btn_1RjVP6LWvpIFJx0GGxzYNmkX";
-              }
+                if (ticketType === "standard") {
+                    buyButtonId = "buy_btn_1RjVN9LWvpIFJx0GtngIPHMH";
+                } else if (ticketType === "standardPlus") {
+                    buyButtonId = "buy_btn_1RjVP6LWvpIFJx0GGxzYNmkX";
+                }
             } else if (city === "Лиссабон") {
-              if (ticketType === "standard") {
-                buyButtonId = "buy_btn_1RjVQALWvpIFJx0G8Tcc3A5W";
-              } else if (ticketType === "standardPlus") {
-                buyButtonId = "buy_btn_1RjVQqLWvpIFJx0GTP4E5Yvv";
-              } else if (ticketType === "family") {
-                buyButtonId = "buy_btn_1RjVRkLWvpIFJx0G4bdiCc5w";
-              }
+                if (ticketType === "standard") {
+                    buyButtonId = "buy_btn_1RjVQALWvpIFJx0G8Tcc3A5W";
+                } else if (ticketType === "standardPlus") {
+                    buyButtonId = "buy_btn_1RjVQqLWvpIFJx0GTP4E5Yvv";
+                } else if (ticketType === "family") {
+                    buyButtonId = "buy_btn_1RjVRkLWvpIFJx0G4bdiCc5w";
+                }
             } else if (city === "Порту") {
-              if (ticketType === "standard") {
-                buyButtonId = "buy_btn_1RbU8NLWvpIFJx0GGgRmvdc1";
-              } else if (ticketType === "standardPlus") {
-                buyButtonId = "buy_btn_1RbaacLWvpIFJx0GW7dM1vJQ";
-              } else if (ticketType === "family") {
-                buyButtonId = "buy_btn_1RbcbtLWvpIFJx0GPWou4ymy";
-              }
+                if (ticketType === "standard") {
+                    buyButtonId = "buy_btn_1RbU8NLWvpIFJx0GGgRmvdc1";
+                } else if (ticketType === "standardPlus") {
+                    buyButtonId = "buy_btn_1RbaacLWvpIFJx0GW7dM1vJQ";
+                } else if (ticketType === "family") {
+                    buyButtonId = "buy_btn_1RbcbtLWvpIFJx0GPWou4ymy";
+                }
             }
 
             if (!buyButtonId) {
-              alert("Данный тип билета недоступен для выбранного города!");
-              return;
+                alert("Данный тип билета недоступен для выбранного города!");
+                return;
             }
 
             const eventDate = document.getElementById('eventDate').value;
@@ -489,18 +385,20 @@
             stripeButton.setAttribute('client-reference-id', clientRef);
             stripeButtonContainer.appendChild(stripeButton);
             stripeButtonContainer.style.display = "block";
-          }
+        }
 
-          auth.onAuthStateChanged((user) => {
+        // Показываем основной контент сразу для покупателей
+        document.getElementById('main-content').classList.add('active');
+
+        // Инициализация лимитов билетов (только для авторизованных админов)
+        auth.onAuthStateChanged((user) => {
             if (user) {
-              document.getElementById('login-section').classList.remove('active');
-              document.getElementById('main-content').classList.add('active');
-              initializeTicketLimits();
-            } else {
-              document.getElementById('login-section').classList.add('active');
-              document.getElementById('main-content').classList.add('active');
+                initializeTicketLimits();
             }
-          });
-        </script>
-      </body>
-      </html>
+        });
+
+        // Инициализация языка при загрузке страницы
+        changeLanguage(currentLanguage);
+    </script>
+</body>
+</html>

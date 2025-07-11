@@ -1,0 +1,169 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  background-image: url('background.jpg'); /* Замени на путь к своему изображению */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #333;
+}
+
+.container {
+  background-color: rgba(255, 255, 255, 0.9); /* Полупрозрачный фон для содержимого */
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  max-width: 600px;
+  width: 90%;
+  text-align: center;
+}
+
+.auth-section, .main-content {
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.auth-section input[type="email"],
+.auth-section input[type="password"],
+select,
+input[type="text"] {
+  width: calc(100% - 20px);
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-sizing: border-box; /* Учитываем padding в ширине */
+}
+
+button {
+  padding: 10px 20px;
+  margin: 5px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+button:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+}
+
+h1, h2, h3 {
+  color: #333;
+  margin-top: 0;
+}
+
+label {
+  display: block;
+  margin-top: 15px;
+  font-weight: bold;
+  text-align: left;
+}
+
+select {
+  width: 100%;
+  margin-bottom: 15px;
+}
+
+.ticket-options label {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  font-weight: normal;
+}
+
+.ticket-options input[type="radio"] {
+  margin-right: 10px;
+  margin-top: 3px; /* Выравнивание радиокнопки с текстом */
+}
+
+.ticket-options small {
+  display: block;
+  margin-left: 24px; /* Отступ для описания билета */
+  color: #666;
+  font-size: 0.9em;
+  text-align: left;
+}
+
+.ticket-info {
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #e9e9e9;
+  border-radius: 5px;
+  font-weight: bold;
+}
+
+.payment-buttons {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.payment-buttons h3 {
+  margin-bottom: 15px;
+}
+
+#stripeButtonContainer {
+  margin-top: 20px;
+}
+
+.language-switch button {
+  background-color: #007bff;
+  margin: 0 5px;
+}
+
+.language-switch button:hover {
+  background-color: #0056b3;
+}
+
+#login-section {
+  display: none;
+}
+
+#login-section.active {
+  display: block;
+}
+
+#main-content {
+  display: none;
+}
+
+#main-content.active {
+  display: block;
+}
+
+.section {
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 20px;
+  border: 1px solid #eee;
+}
+
+.section p {
+  margin-bottom: 5px;
+}
+
+.section a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.section a:hover {
+  text-decoration: underline;
+}
